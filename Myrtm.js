@@ -7,20 +7,21 @@ module.exports = {
   config: {
     name: "system",
     aliases: ["nvcstats", "nvcrt", "monitor"],
-    version: "3.4",
+    version: "3.3",
     author: "Nisan",
     category: "system",
-    shortDescription: "Animated system monitor with NVC style",
+    shortDescription: "Stylish system monitor (random canvas background)",
   },
 
   onStart: async function ({ message }) {
     try {
+      // Canvas
       const width = 800;
       const height = 600;
       const canvas = Canvas.createCanvas(width, height);
       const ctx = canvas.getContext("2d");
 
-      // Gradient background
+      // ✅ Random gradient background
       const colors = [
         ["#ff9a9e", "#fad0c4"],
         ["#a18cd1", "#fbc2eb"],
@@ -35,7 +36,7 @@ module.exports = {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
 
-      // Floating circles
+      // ✅ Add random circles for style
       for (let i = 0; i < 20; i++) {
         ctx.beginPath();
         ctx.arc(
@@ -57,36 +58,11 @@ module.exports = {
       ctx.font = "bold 50px Sans";
       ctx.fillText("NVC SYSTEM MONITOR", width / 2, 100);
 
+      // Info text
       ctx.shadowBlur = 0;
       ctx.fillStyle = "#ffb6ff";
       ctx.font = "28px Sans";
 
-      // Animated loading steps
-      const steps = ["🖥 Initializing CPU...", "💾 Loading Memory...", "⚙️ Loading OS...", "📦 Loading Node.js...", "✅ Done!"];
-
-      for (let i = 0; i < steps.length; i++) {
-        ctx.clearRect(0, 500, width, 100); // Clear previous step
-        ctx.fillText(steps[i], width / 2, 550);
-
-        const buffer = canvas.toBuffer("image/png");
-        const filePath = path.join(__dirname, `nvc_system_step.png`);
-        fs.writeFileSync(filePath, buffer);
-
-        // Send/update message with each step
-        if (i === 0) {
-          var sentMsg = await message.reply({
-            body: steps[i],
-            attachment: fs.createReadStream(filePath)
-          });
-        } else {
-          await message.api.editMessage(steps[i], sentMsg.messageID);
-        }
-
-        fs.unlinkSync(filePath);
-        await new Promise(r => setTimeout(r, 800)); // 0.8s delay per step
-      }
-
-      // Final system stats
       const uptime = process.uptime();
       const days = Math.floor(uptime / (3600 * 24));
       const hours = Math.floor((uptime % (3600 * 24)) / 3600);
@@ -97,33 +73,32 @@ module.exports = {
       const freeMemory = os.freemem();
       const usedMemory = totalMemory - freeMemory;
       const memoryUsagePercentage = (usedMemory / totalMemory * 100).toFixed(2);
+      const cpuUsage = os.loadavg();
       const cpuModel = os.cpus()[0].model;
 
-      const finalInfo = [
+      const info = [
         `🕒 Uptime: ${days}d ${hours}h ${minutes}m ${seconds}s`,
         `💾 Memory Usage: ${memoryUsagePercentage}%`,
         `🧠 CPU: ${cpuModel}`,
         `⚙️ OS: ${os.platform()} | ${os.arch()}`,
-        `📦 Node.js: ${process.version}`
+        `📦 Node.js: ${process.version}`,
       ];
 
-      // Draw final info
-      ctx.clearRect(0, 180, width, 400); // Clear previous info
-      finalInfo.forEach((line, i) => {
-        ctx.fillText(line, width / 2, 200 + i * 50);
+      info.forEach((line, i) => {
+        ctx.fillText(line, width / 2, 180 + i * 50);
       });
 
-      const finalBuffer = canvas.toBuffer("image/png");
-      const finalPath = path.join(__dirname, "nvc_system_final.png");
-      fs.writeFileSync(finalPath, finalBuffer);
+      // Save and send image
+      const buffer = canvas.toBuffer("image/png");
+      const filePath = path.join(__dirname, "nvc_system.png");
+      fs.writeFileSync(filePath, buffer);
 
-      await message.api.editMessage("💫 System Monitor by NVC", sentMsg.messageID);
       await message.reply({
         body: "💫 System Monitor by NVC",
-        attachment: fs.createReadStream(finalPath)
+        attachment: fs.createReadStream(filePath),
       });
 
-      fs.unlinkSync(finalPath);
+      fs.unlinkSync(filePath);
 
     } catch (err) {
       console.error("System Monitor Error:", err);
